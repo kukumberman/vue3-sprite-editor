@@ -47,7 +47,7 @@
   </div>
 
   <div class="atlas-container" :style="atlasSize">
-    <img src="images/placeholder.png" alt="atlas" :style="atlasSize">
+    <img :src="image" alt="atlas" :style="atlasSize">
 
     <div class="grid" :class="{ visible: displayGrid }" :style="gridTemplate">
       <div
@@ -69,13 +69,17 @@
 </template>
 
 <script>
+import AtlasCreator from "./utils/AtlasCreator"
+
 export default {
   name: 'App',
   components: {
   },
   data() {
     return {
+      image: "./images/placeholder.png",
       files: [],
+      displayGrid: true,
       grid: {
         x: 2,
         y: 2
@@ -88,7 +92,6 @@ export default {
         x: 200,
         y: 200
       },
-      displayGrid: true,
     }
   },
   methods: {
@@ -114,14 +117,35 @@ export default {
     dropzoneClickHandler() {
       this.$refs.fileInput.click()
     },
-    createHorizontal() {
-      
+    filesAsBuffers() {
+      return this.files.map(f => f.buffer)
     },
-    createVertical() {
-
+    applyDisplay(atlas) {
+      const { grid, frame, pivot } = atlas.options
+      this.grid.x = grid.x
+      this.grid.y = grid.y
+      this.frame.x = frame.width
+      this.frame.y = frame.height
+      this.pivot.x = pivot.x
+      this.pivot.y = pivot.y
     },
-    createGrid() {
-
+    async createHorizontal() {
+      const atlas = new AtlasCreator(this.filesAsBuffers())
+      const src = await atlas.createHorizontal(this.pivot)
+      this.image = src
+      this.applyDisplay(atlas)
+    },
+    async createVertical() {
+      const atlas = new AtlasCreator(this.filesAsBuffers())
+      const src = await atlas.createVertical(this.pivot)
+      this.image = src
+      this.applyDisplay(atlas)
+    },
+    async createGrid() {
+      const atlas = new AtlasCreator(this.filesAsBuffers())
+      const src = await atlas.createGrid(this.grid, this.pivot)
+      this.image = src
+      this.applyDisplay(atlas)
     }
   },
   computed: {
