@@ -1,23 +1,24 @@
 import Jimp from "jimp"
 
+function nextPow2 (value) {
+  const e = Math.ceil(Math.log(value) / Math.log(2))
+  return Math.pow(2, e)
+}
+
 export default class AtlasCreator {
-  constructor(buffers) {
+  constructor(buffers, useNextPow2) {
     this.buffers = buffers
+    this.useNextPow2 = useNextPow2
   }
 
   calculateFrame() {
-    const nextPow2 = (value) => {
-      const e = Math.ceil(Math.log(value) / Math.log(2))
-      return Math.pow(2, e)
-    }
-    
     // calculating max size of single frame if images has different w/h    
     const w = Math.max(...this.images.map(image => image.bitmap.width))
     const h = Math.max(...this.images.map(image => image.bitmap.height))
 
     const frame = {
-      width: nextPow2(w),
-      height: nextPow2(h)
+      width: this.useNextPow2 ? nextPow2(w) : w,
+      height: this.useNextPow2 ? nextPow2(h) : h
     }
     return frame
   }
