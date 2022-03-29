@@ -179,6 +179,11 @@ export default {
       this.applyDisplay(atlas)
     }
   },
+  watch: {
+    useNextPow2() {
+      this.createGrid()
+    }
+  },
   computed: {
     hasNoFiles() {
       return this.files.length === 0
