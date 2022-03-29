@@ -41,6 +41,9 @@
 
 .atlas-container {
   position: relative;
+}
+
+.atlas-container.bg {
   background-color: var(--atlas-background-color);
 }
 
