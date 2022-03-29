@@ -2,9 +2,17 @@
   <input type="file" @change="onFilesUploaded" ref="fileInput" accept="image/*" multiple>
 
   <div class="file-container">
-    <div id="drop-zone" @click="dropzoneClickHandler">Drop file(s) or click here!</div>
+    <div id="drop-zone"
+      @click="dropzoneClickHandler"
+      @drop="onFilesDrop"
+      @dragover="$event.preventDefault()"
+    >Drop file(s) or click here!</div>
     <ul>
-      <li v-for="(file, i) in files" :key="i">{{ file.name }}</li>
+      <li v-for="(file, i) in files" :key="i">
+        <span>{{ file.name }}</span>
+        &nbsp;
+        <button @click="clickRemoveFile(i)">Remove</button>
+      </li>
     </ul>
     <button @click="clearClick" v-if="files.length > 0">Clear</button>
   </div>
@@ -37,16 +45,24 @@
       <span>Show Grid</span>
       <input type="checkbox" v-model="displayGrid">
     </div>
+    <div>
+      <span>Display Background</span>
+      <input type="checkbox" v-model="displayBackground">
+    </div>
+    <div>
+      <span>useNextPow2</span>
+      <input type="checkbox" v-model="useNextPow2">
+    </div>
 
     <div>
-      <button @click="createGrid">Pack grid</button>
-      <button @click="createHorizontal">Pack horizontal</button>
-      <button @click="createVertical">Pack vertical</button>
+      <button @click="createGrid" :disabled="hasNoFiles">Pack grid</button>
+      <button @click="createHorizontal" :disabled="hasNoFiles">Pack horizontal</button>
+      <button @click="createVertical" :disabled="hasNoFiles">Pack vertical</button>
     </div>
     
   </div>
 
-  <div class="atlas-container" :style="atlasSize">
+  <div class="atlas-container" :class="{ 'bg': displayBackground }" :style="atlasSize">
     <img :src="image" alt="atlas" :style="atlasSize">
 
     <div class="grid" :class="{ visible: displayGrid }" :style="gridTemplate">
@@ -71,6 +87,14 @@
 <script>
 import AtlasCreator from "./utils/AtlasCreator"
 
+function readFileAsBuffer(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.readAsArrayBuffer(file)
+    reader.onload = () => resolve(reader.result)
+  })
+}
+
 export default {
   name: 'App',
   components: {
@@ -80,6 +104,8 @@ export default {
       image: "./images/placeholder.png",
       files: [],
       displayGrid: true,
+      displayBackground: true,
+      useNextPow2: true,
       grid: {
         x: 2,
         y: 2
@@ -95,21 +121,26 @@ export default {
     }
   },
   methods: {
-    readFileAsBuffer(file) {
-      return new Promise((resolve, reject) => {
-        const reader = new FileReader()
-        reader.readAsArrayBuffer(file)
-        reader.onload = () => resolve(reader.result)
-      })
-    },
     onFilesUploaded(event) {
-      const promises = Array.from(event.target.files).map(async (f) => {
+      this.fetchFiles(event.target.files)
+      event.target.value = ""
+    },
+    onFilesDrop(event) {
+      event.preventDefault()
+      this.fetchFiles(event.dataTransfer.files)
+    },
+    async fetchFiles(fileList) {
+      const promises = Array.from(fileList).map(async (f) => {
         return {
           name: f.name,
-          buffer: await this.readFileAsBuffer(f)
+          buffer: await readFileAsBuffer(f)
         }
       })
-      Promise.all(promises).then(files => this.files = files)
+      const files = await Promise.all(promises)
+      this.files.push(...files)
+    },
+    clickRemoveFile(index) {
+      this.files.splice(index, 1)
     },
     clearClick() {
       this.files = []
@@ -130,25 +161,28 @@ export default {
       this.pivot.y = pivot.y
     },
     async createHorizontal() {
-      const atlas = new AtlasCreator(this.filesAsBuffers())
+      const atlas = new AtlasCreator(this.filesAsBuffers(), this.useNextPow2)
       const src = await atlas.createHorizontal(this.pivot)
       this.image = src
       this.applyDisplay(atlas)
     },
     async createVertical() {
-      const atlas = new AtlasCreator(this.filesAsBuffers())
+      const atlas = new AtlasCreator(this.filesAsBuffers(), this.useNextPow2)
       const src = await atlas.createVertical(this.pivot)
       this.image = src
       this.applyDisplay(atlas)
     },
     async createGrid() {
-      const atlas = new AtlasCreator(this.filesAsBuffers())
+      const atlas = new AtlasCreator(this.filesAsBuffers(), this.useNextPow2)
       const src = await atlas.createGrid(this.grid, this.pivot)
       this.image = src
       this.applyDisplay(atlas)
     }
   },
   computed: {
+    hasNoFiles() {
+      return this.files.length === 0
+    },
     pivotPosition() {
       return {
         left: `calc(${this.pivot.x} * 100%)`,
