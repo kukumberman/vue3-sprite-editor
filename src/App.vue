@@ -53,6 +53,10 @@
       <span>useNextPow2</span>
       <input type="checkbox" v-model="useNextPow2">
     </div>
+    <div>
+      <span>autoUpdate</span>
+      <input type="checkbox" v-model="autoUpdate">
+    </div>
 
     <div>
       <button @click="createGrid" :disabled="hasNoFiles">Pack grid</button>
@@ -106,6 +110,7 @@ export default {
       displayGrid: true,
       displayBackground: true,
       useNextPow2: true,
+      autoUpdate: true,
       grid: {
         x: 2,
         y: 2
@@ -144,6 +149,7 @@ export default {
     },
     clearClick() {
       this.files = []
+      this.setDefaults()
     },
     dropzoneClickHandler() {
       this.$refs.fileInput.click()
@@ -177,11 +183,41 @@ export default {
       const src = await atlas.createGrid(this.grid, this.pivot)
       this.image = src
       this.applyDisplay(atlas)
+    },
+    tryUpdate() {
+      if (!this.autoUpdate) {
+        return
+      }
+      if (this.files.length === 0) {
+        return
+      }
+      this.createGrid()
+    },
+    setDefaults() {
+      this.image = "./images/placeholder.png"
+      this.grid = {
+        x: 2,
+        y: 2
+      }
+      this.pivot = {
+        x: 0.5,
+        y: 0.5
+      }
+      this.frame = {
+        x: 200,
+        y: 200
+      }
     }
   },
   watch: {
     useNextPow2() {
-      this.createGrid()
+      this.tryUpdate()
+    },
+    "grid.x": function() {
+      this.tryUpdate()
+    },
+    "grid.y": function() {
+      this.tryUpdate()
     }
   },
   computed: {
