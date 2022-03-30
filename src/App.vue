@@ -218,6 +218,12 @@ export default {
     },
     "grid.y": function() {
       this.tryUpdate()
+    },
+    "pivot.x": function() {
+      this.tryUpdate()
+    },
+    "pivot.y": function() {
+      this.tryUpdate()
     }
   },
   computed: {
