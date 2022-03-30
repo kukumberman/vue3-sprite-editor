@@ -1,5 +1,5 @@
 <template>
-  <input type="file" @change="onFilesUploaded" ref="fileInput" accept="image/*" multiple>
+  <input type="file" @change="onFilesUploaded" ref="fileInput" accept="image/png, image/jpeg" multiple>
 
   <div class="file-container">
     <div id="drop-zone"
@@ -7,13 +7,32 @@
       @drop="onFilesDrop"
       @dragover="$event.preventDefault()"
     >Drop file(s) or click here!</div>
-    <ul>
+    
+    <!-- old unordered list -->
+    <!-- <ul>
       <li v-for="(file, i) in files" :key="i">
         <span>{{ file.name }}</span>
         &nbsp;
         <button @click="clickRemoveFile(i)">Remove</button>
       </li>
-    </ul>
+    </ul> -->
+
+    <!-- new draggable list -->
+    <draggable
+      v-model="files"
+      item-key="name"
+      @end="tryUpdate"
+      tag="ul"
+    >
+      <template #item="{ element, index }">
+        <li>
+          <span>{{ element.name }}</span>
+          &nbsp;
+          <button @click="clickRemoveFile(index)">Remove</button>
+        </li>
+      </template>
+    </draggable>
+
     <button @click="clearClick" v-if="files.length > 0">Clear</button>
   </div>
 
@@ -90,6 +109,7 @@
 
 <script>
 import AtlasCreator from "./utils/AtlasCreator"
+import draggable from "vuedraggable"
 
 function readFileAsBuffer(file) {
   return new Promise((resolve, reject) => {
@@ -102,6 +122,7 @@ function readFileAsBuffer(file) {
 export default {
   name: 'App',
   components: {
+    draggable
   },
   data() {
     return {
@@ -146,6 +167,7 @@ export default {
     },
     clickRemoveFile(index) {
       this.files.splice(index, 1)
+      this.tryUpdate()
     },
     clearClick() {
       this.files = []
@@ -171,18 +193,21 @@ export default {
       const src = await atlas.createHorizontal(this.pivot)
       this.image = src
       this.applyDisplay(atlas)
+      console.log("createHorizontal")
     },
     async createVertical() {
       const atlas = new AtlasCreator(this.filesAsBuffers(), this.useNextPow2)
       const src = await atlas.createVertical(this.pivot)
       this.image = src
       this.applyDisplay(atlas)
+      console.log("createVertical")
     },
     async createGrid() {
       const atlas = new AtlasCreator(this.filesAsBuffers(), this.useNextPow2)
       const src = await atlas.createGrid(this.grid, this.pivot)
       this.image = src
       this.applyDisplay(atlas)
+      console.log("createGrid")
     },
     tryUpdate() {
       if (!this.autoUpdate) {
