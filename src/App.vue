@@ -173,9 +173,10 @@ export default {
       this.applyDisplay(atlas)
       console.log("createGrid")
     },
-    onFileDragEnd() {
-      console.warn("todo: fix reordering")
-      console.log(this.files)
+    onFileDragEnd(event, files) {
+      // temp bandaid - manually reasigning array
+      // todo: proper way of reordering based on event arguments
+      this.files = files
       this.tryUpdate()
     },
     tryUpdate() {

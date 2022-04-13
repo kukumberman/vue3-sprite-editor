@@ -75,8 +75,8 @@ export default {
     clearClick() {
       this.$emit("clearClick")
     },
-    onFileDragEnd() {
-      this.$emit("onFileDragEnd")
+    onFileDragEnd(event) {
+      this.$emit("onFileDragEnd", event, this.files)
     }
   }
 }
