@@ -1,40 +1,12 @@
 <template>
-  <input type="file" @change="onFilesUploaded" ref="fileInput" accept="image/png, image/jpeg" multiple>
-
-  <div class="file-container">
-    <div id="drop-zone"
-      @click="dropzoneClickHandler"
-      @drop="onFilesDrop"
-      @dragover="$event.preventDefault()"
-    >Drop file(s) or click here!</div>
-    
-    <!-- old unordered list -->
-    <!-- <ul>
-      <li v-for="(file, i) in files" :key="i">
-        <span>{{ file.name }}</span>
-        &nbsp;
-        <button @click="clickRemoveFile(i)">Remove</button>
-      </li>
-    </ul> -->
-
-    <!-- new draggable list -->
-    <draggable
-      v-model="files"
-      item-key="name"
-      @end="tryUpdate"
-      tag="ul"
-    >
-      <template #item="{ element, index }">
-        <li>
-          <span>{{ element.name }}</span>
-          &nbsp;
-          <button @click="clickRemoveFile(index)">Remove</button>
-        </li>
-      </template>
-    </draggable>
-
-    <button @click="clearClick" v-if="files.length > 0">Clear</button>
-  </div>
+  <FileView
+    :files="files"
+    @onFilesDrop="onFilesDrop"
+    @onFilesUploaded="onFilesUploaded"
+    @clickRemoveFile="clickRemoveFile"
+    @clearClick="clearClick"
+    @onFileDragEnd="onFileDragEnd"
+  />
 
   <div class="settings-container">
     
@@ -62,11 +34,11 @@
 
     <div>
       <span>Show Grid</span>
-      <input type="checkbox" v-model="displayGrid">
+      <input type="checkbox" v-model="display.grid">
     </div>
     <div>
       <span>Display Background</span>
-      <input type="checkbox" v-model="displayBackground">
+      <input type="checkbox" v-model="display.background">
     </div>
     <div>
       <span>useNextPow2</span>
@@ -85,34 +57,21 @@
     
   </div>
 
-  <div class="atlas-container" :class="{ 'bg': displayBackground }" :style="atlasSize">
-    <img :src="image" alt="atlas" :style="atlasSize">
-
-    <div class="grid" :class="{ visible: displayGrid }" :style="gridTemplate">
-      <div
-        class="frame"
-        v-for="i in (grid.x * grid.y)"
-        :key="i"
-        :style="frameSize"
-      >
-        <div class="circle">
-          <span>{{ i }}</span>
-        </div>
-        <div
-          class="pivot"
-          :style="pivotPosition"
-        ></div>
-      </div>
-    </div>
-  </div>
+  <GridView
+    :sprite="sprite"
+    :grid="grid"
+    :pivot="pivot"
+    :display="display"
+  />
 
   <FooterView link="https://github.com/kukumberman/vue3-sprite-editor" />
 </template>
 
 <script>
+import FileView from "./components/FileView.vue"
+import GridView from "./components/GridView.vue"
 import FooterView from "./components/FooterView.vue"
 import AtlasCreator from "./utils/AtlasCreator"
-import draggable from "vuedraggable"
 
 function readFileAsBuffer(file) {
   return new Promise((resolve, reject) => {
@@ -125,16 +84,19 @@ function readFileAsBuffer(file) {
 export default {
   name: 'App',
   components: {
-    draggable, FooterView
+    FileView,
+    GridView,
+    FooterView,
   },
   data() {
     return {
-      image: "./images/placeholder.png",
-      files: [],
-      displayGrid: true,
-      displayBackground: true,
-      useNextPow2: true,
-      autoUpdate: true,
+      sprite: {
+        image: "./images/placeholder.png",
+        size: {
+          x: 500,
+          y: 500
+        },
+      },
       grid: {
         x: 2,
         y: 2
@@ -143,20 +105,21 @@ export default {
         x: 0.5,
         y: 0.5
       },
-      frame: {
-        x: 200,
-        y: 200
+      files: [],
+      display: {
+        grid: true,
+        background: true,
       },
+      useNextPow2: true,
+      autoUpdate: true,
     }
   },
   methods: {
-    onFilesUploaded(event) {
-      this.fetchFiles(event.target.files)
-      event.target.value = ""
+    onFilesUploaded(fileList) {
+      this.fetchFiles(fileList)
     },
-    onFilesDrop(event) {
-      event.preventDefault()
-      this.fetchFiles(event.dataTransfer.files)
+    onFilesDrop(fileList) {
+      this.fetchFiles(fileList)
     },
     async fetchFiles(fileList) {
       const promises = Array.from(fileList).map(async (f) => {
@@ -167,6 +130,7 @@ export default {
       })
       const files = await Promise.all(promises)
       this.files.push(...files)
+      this.tryUpdate()
     },
     clickRemoveFile(index) {
       this.files.splice(index, 1)
@@ -176,9 +140,6 @@ export default {
       this.files = []
       this.setDefaults()
     },
-    dropzoneClickHandler() {
-      this.$refs.fileInput.click()
-    },
     filesAsBuffers() {
       return this.files.map(f => f.buffer)
     },
@@ -186,43 +147,54 @@ export default {
       const { grid, frame, pivot } = atlas.options
       this.grid.x = grid.x
       this.grid.y = grid.y
-      this.frame.x = frame.width
-      this.frame.y = frame.height
+      this.sprite.size.x = grid.x * frame.width
+      this.sprite.size.y = grid.y * frame.height
       this.pivot.x = pivot.x
       this.pivot.y = pivot.y
     },
     async createHorizontal() {
       const atlas = new AtlasCreator(this.filesAsBuffers(), this.useNextPow2)
       const src = await atlas.createHorizontal(this.pivot)
-      this.image = src
+      this.sprite.image = src
       this.applyDisplay(atlas)
       console.log("createHorizontal")
     },
     async createVertical() {
       const atlas = new AtlasCreator(this.filesAsBuffers(), this.useNextPow2)
       const src = await atlas.createVertical(this.pivot)
-      this.image = src
+      this.sprite.image = src
       this.applyDisplay(atlas)
       console.log("createVertical")
     },
     async createGrid() {
       const atlas = new AtlasCreator(this.filesAsBuffers(), this.useNextPow2)
       const src = await atlas.createGrid(this.grid, this.pivot)
-      this.image = src
+      this.sprite.image = src
       this.applyDisplay(atlas)
       console.log("createGrid")
+    },
+    onFileDragEnd() {
+      console.warn("todo: fix reordering")
+      console.log(this.files)
+      this.tryUpdate()
     },
     tryUpdate() {
       if (!this.autoUpdate) {
         return
       }
-      if (this.files.length === 0) {
-        return
+      if (this.files.length > 0) {
+        this.createGrid()
       }
-      this.createGrid()
+      else {
+        this.setDefaults()
+      }
     },
     setDefaults() {
-      this.image = "./images/placeholder.png"
+      this.sprite.image = "./images/placeholder.png"
+      this.sprite.size = {
+        x: 500,
+        y: 500,
+      }
       this.grid = {
         x: 2,
         y: 2
@@ -230,10 +202,6 @@ export default {
       this.pivot = {
         x: 0.5,
         y: 0.5
-      }
-      this.frame = {
-        x: 200,
-        y: 200
       }
     }
   },
@@ -258,30 +226,6 @@ export default {
     hasNoFiles() {
       return this.files.length === 0
     },
-    pivotPosition() {
-      return {
-        left: `calc(${this.pivot.x} * 100%)`,
-        top: `calc(${this.pivot.y} * 100%)`
-      }
-    },
-    frameSize() {
-      return {
-        width: `${this.frame.x}px`,
-        height: `${this.frame.y}px`
-      }
-    },
-    atlasSize() {
-      return {
-        width: `calc(${this.frame.x}px * ${this.grid.x})`,
-        height: `calc(${this.frame.y}px * ${this.grid.y})`
-      }
-    },
-    gridTemplate() {
-      return {
-        "grid-template-columns": `repeat(${this.grid.x}, 1fr)`,
-        "grid-template-rows": `repeat(${this.grid.y}, 1fr)`,
-      }
-    }
   }
 }
 </script>
