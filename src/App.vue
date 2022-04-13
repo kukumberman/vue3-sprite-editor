@@ -105,9 +105,12 @@
       </div>
     </div>
   </div>
+
+  <FooterView link="https://github.com/kukumberman/vue3-sprite-editor" />
 </template>
 
 <script>
+import FooterView from "./components/FooterView.vue"
 import AtlasCreator from "./utils/AtlasCreator"
 import draggable from "vuedraggable"
 
@@ -122,7 +125,7 @@ function readFileAsBuffer(file) {
 export default {
   name: 'App',
   components: {
-    draggable
+    draggable, FooterView
   },
   data() {
     return {
