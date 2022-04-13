@@ -64,10 +64,15 @@
     :display="display"
   />
 
+  <div>
+    <button @click="save">Save</button>
+  </div>
+
   <FooterView link="https://github.com/kukumberman/vue3-sprite-editor" />
 </template>
 
 <script>
+import fileSaver from "file-saver"
 import FileView from "./components/FileView.vue"
 import GridView from "./components/GridView.vue"
 import FooterView from "./components/FooterView.vue"
@@ -115,6 +120,17 @@ export default {
     }
   },
   methods: {
+    save() {
+      try {
+        const isSupported = !!new Blob
+        const fileName = `image-${Date.now()}.png`
+        fileSaver.saveAs(this.sprite.image, fileName)
+      }
+      catch(error) {
+        console.log(error)
+        alert("Looks like your browser doesn't support this feature 😢")
+      }
+    },
     onFilesUploaded(fileList) {
       this.fetchFiles(fileList)
     },
